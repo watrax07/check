@@ -217,17 +217,6 @@ function bindEvents() {
     reader.readAsDataURL(file);
   });
 
-  // Logo empresa
-  document.getElementById("logoEmpresa").addEventListener("change", (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      formState.logo = reader.result;
-    };
-    reader.readAsDataURL(file);
-  });
 
   // Botones
   document.getElementById("btnReset").addEventListener("click", resetForm);
