@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CHECK AUTOS - INSPECCIÓN VEHICULAR</title>
+
+  <!-- Librerías PDF -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <header>
+    <h1>CHECK AUTOS - INSPECCIÓN VEHICULAR</h1>
+    <div class="actions">
+      <button type="button" id="btnReset">Limpiar</button>
+      <button type="button" class="primary" id="btnPdf">Finalizar y Descargar PDF</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="exportArea">
+
+      <div class="card">
+        <div class="grid-4">
+          <div>
+            <label>Placa</label>
+            <input id="placa" type="text" placeholder="Ej: ABC123"/>
+          </div>
+
+          <div>
+            <label>Modelo</label>
+            <input id="modelo" type="text" placeholder="Ej: Toyota Corolla"/>
+          </div>
+
+          <div>
+            <label>Año</label>
+            <input id="anio" type="text" placeholder="Ej: 2018"/>
+          </div>
+
+          <div>
+            <label>Fecha de Inspección</label>
+            <input id="fecha" type="date"/>
+          </div>
+
+          <div class="full">
+            <label>Logo de la empresa (opcional)</label>
+            <input id="logoEmpresa" type="file" accept="image/*"/>
+            <p class="muted">Se incluirá en el encabezado del PDF.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECCIONES -->
+      <div class="card">
+        <h2 class="section-title">1. Carrocería</h2>
+        <div id="section-carroceria"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">2. Habitáculo</h2>
+        <div id="section-habitaculo"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">3. Motor (parte superior / visual)</h2>
+        <div id="section-motor-superior"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">4. Motor (parte inferior)</h2>
+        <div id="section-motor-inferior"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">5. Suspensión y Dirección</h2>
+        <div id="section-suspension"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">6. Llantas y Frenos</h2>
+        <div id="section-llantas"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">7. Conclusiones</h2>
+        <label>Conclusión general y recomendación de compra</label>
+        <textarea id="conclusiones" placeholder="Ej: Vehículo en buen estado general, se recomienda..."></textarea>
+      </div>
+
+
+      <!-- FOTOS -->
+      <div class="card">
+        <h2 class="section-title">8. Fotos (referencial)</h2>
+        <p class="muted">Sube fotos y se incluirán automáticamente en el PDF.</p>
+        <div class="photo-grid" id="photos"></div>
+      </div>
+
+    </div>
+  </main>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
