@@ -242,12 +242,49 @@ function resetForm() {
 /* =========================
    PDF BONITO
    ========================= */
+/* =========================================================
+   HELPERS PDF (NO ESTIRAR IMÁGENES + LOGO PROPORCIONAL)
+   ========================================================= */
+
+// Inserta imagen dentro de una "caja" sin deformar (contain)
+function addImageContain(pdf, dataUrl, x, y, maxW, maxH, format = "JPEG") {
+  const props = pdf.getImageProperties(dataUrl);
+  const imgW = props.width;
+  const imgH = props.height;
+
+  const ratio = Math.min(maxW / imgW, maxH / imgH);
+  const w = imgW * ratio;
+  const h = imgH * ratio;
+
+  const cx = x + (maxW - w) / 2;
+  const cy = y + (maxH - h) / 2;
+
+  pdf.addImage(dataUrl, format, cx, cy, w, h);
+  return { w, h, cx, cy };
+}
+
+// Inserta logo proporcional sin deformarse
+function addLogoProportional(pdf, imgData, x, y, maxW, maxH) {
+  const props = pdf.getImageProperties(imgData);
+  const ratio = Math.min(maxW / props.width, maxH / props.height);
+  const w = props.width * ratio;
+  const h = props.height * ratio;
+  pdf.addImage(imgData, "PNG", x, y, w, h);
+  return { w, h };
+}
+
+
+/* =========================================================
+   PDF PREMIUM (LOGO FIJO + CARDS + TABLAS + FOTOS NÍTIDAS)
+   ========================================================= */
+
 async function finishAndDownloadPdf() {
   const btn = document.getElementById("btnPdf");
-  const original = btn.textContent;
-
-  btn.textContent = "Generando PDF...";
-  btn.disabled = true;
+  const original = btn?.textContent || "Finalizar y Descargar PDF";
+  if (btn) {
+    btn.textContent = "Generando PDF...";
+    btn.disabled = true;
+  }
 
   try {
     const { jsPDF } = window.jspdf;
@@ -257,26 +294,50 @@ async function finishAndDownloadPdf() {
     const pageH = pdf.internal.pageSize.getHeight();
     const margin = 12;
 
-    const placa = document.getElementById("placa").value?.trim() || "SIN_PLACA";
-    const modelo = document.getElementById("modelo").value?.trim() || "SIN_MODELO";
-    const anio = document.getElementById("anio").value?.trim() || "SIN_AÑO";
-    const fecha = document.getElementById("fecha").value || "SIN_FECHA";
-    const conclusiones = document.getElementById("conclusiones").value?.trim() || "Sin conclusiones.";
+    // Valores seguros
+    const placa = document.getElementById("placa")?.value?.trim() || "SIN_PLACA";
+    const modelo = document.getElementById("modelo")?.value?.trim() || "SIN_MODELO";
+    const anio = document.getElementById("anio")?.value?.trim() || "SIN_AÑO";
+    const fecha = document.getElementById("fecha")?.value || "SIN_FECHA";
+    const conclusiones = document.getElementById("conclusiones")?.value?.trim() || "Sin conclusiones.";
 
+    // Contadores resumen
+    let greenCount = 0, yellowCount = 0, redCount = 0;
+    Object.values(formState.checks || {}).forEach(c => {
+      if (c.status === "green") greenCount++;
+      if (c.status === "yellow") yellowCount++;
+      if (c.status === "red") redCount++;
+    });
+
+    // Helpers internos
     const wrapText = (text, maxW) => pdf.splitTextToSize(text, maxW);
 
     function line(y) {
-      pdf.setDrawColor(40);
-      pdf.setLineWidth(0.4);
+      pdf.setDrawColor(210);
+      pdf.setLineWidth(0.3);
       pdf.line(margin, y, pageW - margin, y);
     }
 
+    function drawCard(x, y, w, h) {
+      pdf.setFillColor(255, 255, 255);
+      pdf.setDrawColor(220);
+      pdf.roundedRect(x, y, w, h, 4, 4, "FD");
+    }
+
+    function cardTitle(title, x, y) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(11);
+      pdf.setTextColor(25);
+      pdf.text(title, x, y);
+      pdf.setTextColor(0);
+    }
+
     function drawStatusBadge(status, x, y) {
-      // Cuadro de color + texto
       if (status === "green") pdf.setFillColor(34, 197, 94);
       if (status === "yellow") pdf.setFillColor(245, 158, 11);
       if (status === "red") pdf.setFillColor(239, 68, 68);
 
+      // Cuadro color
       pdf.rect(x, y - 4, 6, 6, "F");
 
       pdf.setFont("helvetica", "bold");
@@ -286,81 +347,103 @@ async function finishAndDownloadPdf() {
       pdf.text(label, x + 9, y);
     }
 
-    // ===== PORTADA =====
-    // Logo
-    if (formState.logo) {
-      // intentamos PNG; si falla, cambia a "JPEG"
-      pdf.addImage(formState.logo, "PNG", margin, 10, 26, 26);
+    /* =========================
+       PORTADA PREMIUM
+       ========================= */
+
+    // Header con fondo
+    pdf.setFillColor(245, 247, 250);
+    pdf.roundedRect(margin, 10, pageW - margin * 2, 34, 4, 4, "F");
+
+    // Logo fijo (proporcional, sin deformar)
+    const fixedLogo = document.getElementById("fixedLogo");
+    let logoW = 0;
+
+    if (fixedLogo && fixedLogo.complete && fixedLogo.naturalWidth > 0) {
+      const c = document.createElement("canvas");
+      c.width = fixedLogo.naturalWidth;
+      c.height = fixedLogo.naturalHeight;
+      const ctx = c.getContext("2d");
+      ctx.drawImage(fixedLogo, 0, 0);
+
+      const logoData = c.toDataURL("image/png");
+      const r = addLogoProportional(pdf, logoData, margin + 4, 14, 22, 22);
+      logoW = r.w + 6;
     }
 
+    // Título
     pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(18);
-    pdf.text("CHECK AUTOS - INSPECCIÓN VEHICULAR", margin + (formState.logo ? 30 : 0), 20);
+    pdf.setFontSize(16);
+    pdf.setTextColor(10);
+    pdf.text("CHECK AUTOS - INSPECCIÓN VEHICULAR", margin + 8 + logoW, 24);
 
+    // Subtítulo
     pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(11);
-    pdf.setTextColor(70);
-    pdf.text("Reporte de revisión vehicular", margin + (formState.logo ? 30 : 0), 28);
+    pdf.setFontSize(10);
+    pdf.setTextColor(80);
+    pdf.text("Reporte de revisión vehicular", margin + 8 + logoW, 30);
     pdf.setTextColor(0);
 
-    line(33);
+    // Línea separador
+    line(48);
 
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(12);
-    pdf.text("Datos del vehículo", margin, 44);
+    let y = 56;
 
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(11);
-    pdf.text(`Placa: ${placa}`, margin, 52);
-    pdf.text(`Modelo: ${modelo}`, margin, 59);
-    pdf.text(`Año: ${anio}`, margin, 66);
-    pdf.text(`Fecha de Inspección: ${fecha}`, margin, 73);
-
-    line(80);
-
-    // Resumen general
-    let greenCount = 0, yellowCount = 0, redCount = 0;
-    Object.values(formState.checks).forEach(c => {
-      if (c.status === "green") greenCount++;
-      if (c.status === "yellow") yellowCount++;
-      if (c.status === "red") redCount++;
-    });
-
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Resumen general", margin, 92);
-
-    pdf.setFont("helvetica", "normal");
-    pdf.text(`Bueno: ${greenCount}`, margin, 100);
-    pdf.text(`Observación: ${yellowCount}`, margin, 107);
-    pdf.text(`Malo: ${redCount}`, margin, 114);
-
-    line(122);
-
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Conclusión y recomendación", margin, 132);
+    // Card Datos del vehículo
+    drawCard(margin, y, pageW - margin * 2, 40);
+    cardTitle("Datos del vehículo", margin + 6, y + 10);
 
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(10);
+    pdf.text(`Placa: ${placa}`, margin + 6, y + 18);
+    pdf.text(`Modelo: ${modelo}`, margin + 6, y + 25);
+    pdf.text(`Año: ${anio}`, margin + 6, y + 32);
+    pdf.text(`Fecha de Inspección: ${fecha}`, margin + 6, y + 39);
 
-    const conclusionLines = wrapText(conclusiones, pageW - margin * 2);
-    pdf.text(conclusionLines, margin, 140);
+    y += 48;
 
-    // Footer portada
+    // Card Resumen general
+    drawCard(margin, y, pageW - margin * 2, 34);
+    cardTitle("Resumen general", margin + 6, y + 10);
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    pdf.text(`Bueno: ${greenCount}`, margin + 6, y + 20);
+    pdf.text(`Observación: ${yellowCount}`, margin + 6, y + 27);
+    pdf.text(`Malo: ${redCount}`, margin + 6, y + 34);
+
+    y += 42;
+
+    // Card Conclusión
+    const conclusionLines = wrapText(conclusiones, pageW - margin * 2 - 12);
+    const conclusionHeight = Math.min(70, 20 + conclusionLines.length * 5);
+
+    drawCard(margin, y, pageW - margin * 2, conclusionHeight);
+    cardTitle("Conclusión y recomendación", margin + 6, y + 10);
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    pdf.text(conclusionLines, margin + 6, y + 20);
+
+    // Footer
     pdf.setFontSize(9);
-    pdf.setTextColor(110);
-    pdf.text(`Generado automáticamente - ${new Date().toLocaleDateString("es-ES")}`, margin, pageH - 12);
+    pdf.setTextColor(130);
+    pdf.text(`Generado automáticamente - ${new Date().toLocaleDateString("es-ES")}`, margin, pageH - 10);
     pdf.setTextColor(0);
 
-    // ===== DETALLE =====
+    /* =========================
+       DETALLE DE INSPECCIÓN
+       ========================= */
+
     pdf.addPage();
-    let y = 16;
+    y = 16;
 
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(14);
     pdf.text("Detalle de inspección", margin, y);
     y += 6;
     line(y);
-    y += 8;
+    y += 10;
 
     const rowH = 10;
     const colItem = 85;
@@ -400,16 +483,15 @@ async function finishAndDownloadPdf() {
 
       pdf.text(item, margin + 2, y + 6);
 
-      // badge
       drawStatusBadge(status, margin + colItem + 2, y + 6);
 
-      // comentario wrap (max 2 líneas)
       const wrapped = pdf.splitTextToSize(comment || "-", colComentario - 4);
       pdf.text(wrapped.slice(0, 2), margin + colItem + colEstado + 2, y + 6);
 
       y += rowH;
     }
 
+    // Render secciones
     SECTIONS.forEach(sec => {
       if (y > pageH - 35) {
         pdf.addPage();
@@ -418,7 +500,7 @@ async function finishAndDownloadPdf() {
 
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(12);
-      pdf.text(sec.title, margin, y);
+      pdf.text(sec.title || sec.id, margin, y);
       y += 6;
 
       drawTableHeader();
@@ -432,8 +514,11 @@ async function finishAndDownloadPdf() {
       y += 10;
     });
 
-    // ===== FOTOS =====
-    const photos = formState.photos.filter(Boolean);
+    /* =========================
+       FOTOS (NÍTIDAS, SIN ESTIRAR)
+       ========================= */
+
+    const photos = (formState.photos || []).filter(Boolean);
     if (photos.length > 0) {
       pdf.addPage();
       y = 16;
@@ -445,71 +530,48 @@ async function finishAndDownloadPdf() {
       line(y);
       y += 10;
 
-      const imgW = pageW - margin * 2;
-      const imgH = 80;
+      const boxW = pageW - margin * 2;
+      const boxH = 82;
 
       for (let i = 0; i < photos.length; i++) {
-        if (y + imgH > pageH - 20) {
+        if (y + boxH > pageH - 20) {
           pdf.addPage();
           y = 16;
         }
 
+        // caja
         pdf.setDrawColor(220);
-        pdf.rect(margin, y, imgW, imgH);
-        pdf.addImage(photos[i], "JPEG", margin + 2, y + 2, imgW - 4, imgH - 4);
+        pdf.setFillColor(255, 255, 255);
+        pdf.roundedRect(margin, y, boxW, boxH, 4, 4, "FD");
 
+        // imagen contenida
+        addImageContain(pdf, photos[i], margin + 2, y + 2, boxW - 4, boxH - 4, "JPEG");
+
+        // etiqueta
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(10);
-        pdf.text(`Foto ${i + 1}`, margin, y + imgH + 6);
+        pdf.setTextColor(60);
+        pdf.text(`Foto ${i + 1}`, margin, y + boxH + 6);
+        pdf.setTextColor(0);
 
-        y += imgH + 14;
+        y += boxH + 14;
       }
     }
 
-    // ===== MAPA DEL VEHÍCULO (CAPTURA BONITA) =====
-    let currentPaint = "green";
-formState.map = formState.map || {};
-
-function setPaintColor(color) {
-  currentPaint = color;
-  document.querySelectorAll(".palette .p").forEach(b => b.classList.remove("active"));
-  document.querySelector(`.palette .p[data-paint="${color}"]`)?.classList.add("active");
-}
-
-// Pintar SVG zone
-function paintSvgZone(el) {
-  const zoneId = el.dataset.zone;
-
-  el.classList.remove("green", "yellow", "red");
-  el.classList.add(currentPaint);
-
-  formState.map[zoneId] = currentPaint;
-}
-
-document.addEventListener("click", (e) => {
-  const paintBtn = e.target.closest("[data-paint]");
-  if (paintBtn) {
-    setPaintColor(paintBtn.dataset.paint);
-    return;
-  }
-
-  const zone = e.target.closest("#carSvg .zone");
-  if (zone) {
-    paintSvgZone(zone);
-    return;
-  }
-});
-
-
+    // Guardar PDF
     pdf.save(`INSPECCION_${placa}_${fecha}.pdf`);
+
   } catch (err) {
     console.error(err);
-    alert("Error generando PDF. Revisa la consola (F12) y vuelve a intentar.");
+    alert("Error generando PDF. Revisa consola (F12).");
   } finally {
-    btn.textContent = original;
-    btn.disabled = false;
+    if (btn) {
+      btn.textContent = original;
+      btn.disabled = false;
+    }
   }
 }
+
 
 /* =========================
    INIT
