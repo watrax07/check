@@ -216,8 +216,6 @@ function bindEvents() {
     };
     reader.readAsDataURL(file);
   });
-
-
   // Botones
   document.getElementById("btnReset").addEventListener("click", resetForm);
   document.getElementById("btnPdf").addEventListener("click", finishAndDownloadPdf);
