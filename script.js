@@ -329,7 +329,7 @@ async function finishAndDownloadPdf() {
 
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(9);
-      const label = status === "green" ? "BUENO" : status === "yellow" ? "OBSERVAR" : "MALO";
+      const label = status === "green" ? "BUENO" : status === "yellow" ? "REGULAR" : "MALO";
       pdf.setTextColor(0);
       pdf.text(label, x + 9, y);
     }
@@ -339,8 +339,9 @@ async function finishAndDownloadPdf() {
        ========================= */
 
     // Header con fondo
-    pdf.setFillColor(245, 247, 250);
+    pdf.setFillColor(255, 205, 205);
     pdf.roundedRect(margin, 10, pageW - margin * 2, 34, 4, 4, "F");
+
 
     // Logo fijo (proporcional, sin deformar)
     const fixedLogo = document.getElementById("fixedLogo");
@@ -354,7 +355,8 @@ async function finishAndDownloadPdf() {
       ctx.drawImage(fixedLogo, 0, 0);
 
       const logoData = c.toDataURL("image/png");
-      const r = addLogoProportional(pdf, logoData, margin + 4, 14, 22, 22);
+      const r = addLogoProportional(pdf, logoData, margin + 4, 12, 30, 30);
+
       logoW = r.w + 6;
     }
 
@@ -372,51 +374,113 @@ async function finishAndDownloadPdf() {
     pdf.setTextColor(0);
 
     // Línea separador
-    line(48);
+    pdf.setDrawColor(184, 184, 184);
+pdf.setLineWidth(1.2);
+pdf.line(margin + 10, 48, pageW - margin - 10, 48);
 
-    let y = 56;
+let y = 56;
+
 
     // Card Datos del vehículo
-    drawCard(margin, y, pageW - margin * 2, 40);
-    cardTitle("Datos del vehículo", margin + 6, y + 10);
+    // Card Datos del vehículo (borde color header)
+pdf.setDrawColor(252, 182, 182);
+pdf.setLineWidth(0.9);
+pdf.roundedRect(margin, y, pageW - margin * 2, 44, 4, 4, "D");
 
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(10);
-    pdf.text(`Placa: ${placa}`, margin + 6, y + 18);
-    pdf.text(`Modelo: ${modelo}`, margin + 6, y + 25);
-    pdf.text(`Año: ${anio}`, margin + 6, y + 32);
-    pdf.text(`Fecha de Inspección: ${fecha}`, margin + 6, y + 39);
+cardTitle("Datos del vehículo", margin + 6, y + 10);
 
-    y += 48;
+pdf.setFont("helvetica", "normal");
+pdf.setFontSize(10);
+pdf.text(`Placa: ${placa}`, margin + 6, y + 18);
+pdf.text(`Modelo: ${modelo}`, margin + 6, y + 25);
+pdf.text(`Año: ${anio}`, margin + 6, y + 32);
+pdf.text(`Fecha de Inspección: ${fecha}`, margin + 6, y + 39);
 
-    // Card Resumen general
-    drawCard(margin, y, pageW - margin * 2, 34);
-    cardTitle("Resumen general", margin + 6, y + 10);
+y += 48;
+// Card Resumen general (mismo diseño)
+// Card Resumen general (mismo diseño)
+pdf.setDrawColor(252, 182, 182);
+pdf.setLineWidth(0.9);
+pdf.roundedRect(margin, y, pageW - margin * 2, 38, 4, 4, "D");
 
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(10);
-    pdf.text(`Bueno: ${greenCount}`, margin + 6, y + 20);
-    pdf.text(`Observación: ${yellowCount}`, margin + 6, y + 27);
-    pdf.text(`Malo: ${redCount}`, margin + 6, y + 34);
+cardTitle("Resumen general", margin + 6, y + 10);
 
-    y += 42;
+pdf.setFont("helvetica", "normal");
+pdf.setFontSize(10);
 
-    // Card Conclusión
-    const conclusionLines = wrapText(conclusiones, pageW - margin * 2 - 12);
-    const conclusionHeight = Math.min(70, 20 + conclusionLines.length * 5);
+// Helpers: cuadrito de color
+function miniBox(x, y, rgb) {
+  pdf.setFillColor(rgb[0], rgb[1], rgb[2]);
+  pdf.rect(x, y - 4, 5, 5, "F");
+}
 
-    drawCard(margin, y, pageW - margin * 2, conclusionHeight);
-    cardTitle("Conclusión y recomendación", margin + 6, y + 10);
+// BUENO
+miniBox(margin + 6, y + 20, [34, 197, 94]);
+pdf.text(`Bueno: ${greenCount}`, margin + 13, y + 20);
 
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(10);
-    pdf.text(conclusionLines, margin + 6, y + 20);
+// OBSERVACIÓN
+miniBox(margin + 6, y + 27, [245, 158, 11]);
+pdf.text(`Observación: ${yellowCount}`, margin + 13, y + 27);
 
-    // Footer
-    pdf.setFontSize(9);
-    pdf.setTextColor(130);
-    pdf.text(`Generado automáticamente - ${new Date().toLocaleDateString("es-ES")}`, margin, pageH - 10);
-    pdf.setTextColor(0);
+// MALO
+miniBox(margin + 6, y + 34, [239, 68, 68]);
+pdf.text(`Malo: ${redCount}`, margin + 13, y + 34);
+
+
+y += 46; // evita que se encime con el siguiente bloque
+
+
+// Card Conclusión (mismo diseño)
+const conclusionLines = wrapText(conclusiones, pageW - margin * 2 - 12);
+
+// altura dinámica según líneas (mínimo 30, máximo lo que quepa en la página)
+const lineH = 5;
+const topPad = 14;
+const bottomPad = 10;
+
+let conclusionHeight = topPad + (conclusionLines.length * lineH) + bottomPad;
+
+// evita que se salga de la hoja
+const maxH = pageH - y - 30; // deja espacio para el footer
+conclusionHeight = Math.min(conclusionHeight, maxH);
+
+pdf.setDrawColor(252, 182, 182);
+pdf.setLineWidth(0.9);
+pdf.roundedRect(margin, y, pageW - margin * 2, conclusionHeight, 4, 4, "D");
+
+cardTitle("Conclusión y recomendación", margin + 6, y + 10);
+
+pdf.setFont("helvetica", "normal");
+pdf.setFontSize(10);
+
+// limita el texto a lo que cabe dentro del recuadro
+const maxLines = Math.floor((conclusionHeight - topPad - bottomPad) / lineH);
+pdf.text(conclusionLines.slice(0, maxLines), margin + 6, y + 20);
+
+
+// Footer
+pdf.setFontSize(9);
+pdf.setTextColor(130);
+pdf.text(`Generado automáticamente - ${new Date().toLocaleDateString("es-ES")}`, margin, pageH - 10);
+pdf.setTextColor(0);
+
+  // Footer (con box estilo header + más info)
+const footerY = pageH - 18;
+
+pdf.setFillColor(255, 205, 205);
+pdf.roundedRect(margin, footerY, pageW - margin * 2, 10, 4, 4, "F");
+
+pdf.setFontSize(9);
+pdf.setTextColor(120);
+pdf.text(
+  `Generado automáticamente - ${new Date().toLocaleDateString("es-ES")}  |  CHECK AUTOS`,
+  pageW / 2,
+  footerY + 6.6,
+  { align: "center" }
+);
+
+pdf.setTextColor(0);
+
 
     /* =========================
        DETALLE DE INSPECCIÓN
@@ -437,20 +501,28 @@ async function finishAndDownloadPdf() {
     const colEstado = 36;
     const colComentario = pageW - margin * 2 - colItem - colEstado;
 
-    function drawTableHeader() {
-      pdf.setFillColor(245, 245, 245);
-      pdf.rect(margin, y, pageW - margin * 2, rowH, "F");
+function drawTableHeader() {
+  // Fondo del header (rojo suave)
+  pdf.setFillColor(255, 205, 205);
+  pdf.rect(margin, y, pageW - margin * 2, rowH, "F");
 
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(10);
-      pdf.setTextColor(0);
+  // Borde del header
+  pdf.setDrawColor(252, 182, 182);
+  pdf.setLineWidth(0.6);
+  pdf.rect(margin, y, pageW - margin * 2, rowH, "D");
 
-      pdf.text("Ítem", margin + 2, y + 7);
-      pdf.text("Estado", margin + colItem + 2, y + 7);
-      pdf.text("Comentario", margin + colItem + colEstado + 2, y + 7);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(10);
+  pdf.setTextColor(60);
 
-      y += rowH;
-    }
+  pdf.text("Ítem", margin + 2, y + 7);
+  pdf.text("Estado", margin + colItem + 2, y + 7);
+  pdf.text("Comentario", margin + colItem + colEstado + 2, y + 7);
+
+  pdf.setTextColor(0);
+  y += rowH;
+}
+
 
     function drawRow(item, status, comment) {
       if (y > pageH - 20) {
