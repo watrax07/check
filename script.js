@@ -420,7 +420,7 @@ pdf.text(`Bueno: ${greenCount}`, margin + 13, y + 20);
 
 // OBSERVACIÓN
 miniBox(margin + 6, y + 27, [245, 158, 11]);
-pdf.text(`Observación: ${yellowCount}`, margin + 13, y + 27);
+pdf.text(`REGULAR: ${yellowCount}`, margin + 13, y + 27);
 
 // MALO
 miniBox(margin + 6, y + 34, [239, 68, 68]);
